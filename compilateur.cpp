@@ -331,15 +331,15 @@ void ForStatement(void){
 		Error("Identificateur attendu");
 	string loopvar = lexer->YYText();
 	AssignementStatement();
-	cout << "For" << tag << ":" << endl;
 	if(current!=TOTOK)
 		Error("TO attendu");
 	current=(TOKEN) lexer->yylex();
 	Expression();
-	cout << "\tpop %rbx" << endl;
+	cout << "\tpop %r12" << endl;
+	cout << "For" << tag << ":" << endl;
 	cout << "\tpush " << loopvar << endl;
 	cout << "\tpop %rax" << endl;
-	cout << "\tcmpq %rbx, %rax" << endl;
+	cout << "\tcmpq %r12, %rax" << endl;
 	cout << "\tjg EndFor" << tag << endl;
 	if(current!=DOTOK)
 		Error("DO attendu");
@@ -350,10 +350,12 @@ void ForStatement(void){
 	cout << "\tpop %rbx" << endl;
 	cout << "\tpop %rax" << endl;
 	cout << "\taddq %rbx, %rax" << endl;
+	cout << "\tpush %rax" << endl;
 	cout << "\tpop " << loopvar << endl;
 	cout << "\tjmp For" << tag << endl;
 	cout << "EndFor" << tag << ":" << endl;
 }
+
 
 void BlockStatement(void){
 	current=(TOKEN) lexer->yylex();

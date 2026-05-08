@@ -7,10 +7,12 @@ using namespace std;
 %option c++
 %option yylineno
 stringconst  \"[^\n"]+\"
+charconst    \'[^\n']\'
 ws      [ \t\n\r]+
 alpha   [A-Za-z]
 digit   [0-9]
 number  {digit}+
+floatnumber {digit}+\.{digit}+
 id	{alpha}({alpha}|{digit})*
 addop	(\+|\-|\|\|)
 mulop	(\*|\/|%|\&\&)
@@ -20,10 +22,14 @@ unknown [^\"A-Za-z0-9 \n\r\t\(\)\<\>\=\!\%\&\|\}\-\;\.]+
 {addop}		return ADDOP;
 {mulop}		return MULOP;
 {relop}		return RELOP;
+{floatnumber}	return FLOATNUMBER;
 {number}	return NUMBER;
+{charconst}	return CHARCONST;
 "VAR"		return VARTOK;
 "INTEGER"	return INTEGERTOK;
 "BOOLEAN"	return BOOLEANTOK;
+"DOUBLE"	return DOUBLETOK;
+"CHAR"		return CHARTOK;
 "IF"		return IFTOK;
 "THEN"		return THENTOK;
 "ELSE"		return ELSETOK;

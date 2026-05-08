@@ -14,7 +14,7 @@ using namespace std;
 enum OPREL {EQU, DIFF, INF, SUP, INFE, SUPE, WTFR};
 enum OPADD {ADD, SUB, OR, WTFA};
 enum OPMUL {MUL, DIV, MOD, AND, WTFM};
-enum TYPE {UNSIGNED_INT, BOOLEAN};
+enum TYPE {UNSIGNED_INT, BOOLEAN, DOUBLE, CHAR};
 
 TOKEN current;
 
@@ -35,41 +35,78 @@ void Error(string s){
 }
 
 TYPE Identifier(void){
-	string name = lexer->YYText();
-	cout << "\tpush " << name << endl;
-	current=(TOKEN) lexer->yylex();
-	if(VariableType.find(name)!=VariableType.end())
-		return VariableType[name];
-	return UNSIGNED_INT;
+    string name = lexer->YYText();
+    TYPE type = UNSIGNED_INT;
+    if(VariableType.find(name)!=VariableType.end())
+        type=VariableType[name];
+    if(type==DOUBLE){
+        cout << "\tsubq $8, %rsp" << endl;
+        cout << "\tmovq " << name << ", %rax" << endl;
+        cout << "\tmovq %rax, (%rsp)" << endl;
+    } else if(type==CHAR){
+        cout << "\tmovzbq " << name << ", %rax" << endl;
+        cout << "\tpush %rax" << endl;
+    } else {
+        cout << "\tpush " << name << endl;
+    }
+    current=(TOKEN) lexer->yylex();
+    return type;
 }
 
 
 TYPE Number(void){
-	cout <<"\tpush $"<<atoi(lexer->YYText())<<endl;
-	current=(TOKEN) lexer->yylex();
-	return UNSIGNED_INT;
+    cout <<"\tpush $"<<atoi(lexer->YYText())<<endl;
+    current=(TOKEN) lexer->yylex();
+    return UNSIGNED_INT;
+}
+
+TYPE FloatNumber(void){
+    double f=atof(lexer->YYText());
+    long long unsigned int *i=(long long unsigned int *)&f;
+    cout << "\tsubq $8, %rsp" << endl;
+    cout << "\tmovq $"<<*i<<", %rax\t# empile le flottant "<<f<<endl;
+    cout << "\tmovq %rax, (%rsp)" << endl;
+    current=(TOKEN) lexer->yylex();
+    return DOUBLE;
+}
+
+
+TYPE CharConst(void){
+    char c=lexer->YYText()[1]; // 'a' -> a
+    cout <<"\tpush $"<<(int)c<<"\t# empile le caractère '"<<c<<"'"<<endl;
+    current=(TOKEN) lexer->yylex();
+    return CHAR;
 }
 
 TYPE Expression(void);
-
 TYPE Factor(void){
-	TYPE type;
-	if(current==RPARENT){
-		current=(TOKEN) lexer->yylex();
-		type=Expression();
-		if(current!=LPARENT)
-			Error("')' était attendu");
-		else
-			current=(TOKEN) lexer->yylex();
-	}
-	else if(current==NUMBER)
-		type=Number();
-	else if(current==ID)
-		type=Identifier();
-	else
-		Error("'(' ou chiffre ou lettre attendue");
-	return type;
+    TYPE type;
+    if(current==RPARENT){
+        current=(TOKEN) lexer->yylex();
+        type=Expression();
+        if(current!=LPARENT)
+            Error("')' était attendu");
+        else
+            current=(TOKEN) lexer->yylex();
+    }
+    else if(current==NUMBER)
+        type=Number();
+    else if(current==FLOATNUMBER)
+        type=FloatNumber();
+    else if(current==CHARCONST)
+        type=CharConst();
+    else if(current==ID)
+        type=Identifier();
+    else
+        Error("'(' ou chiffre ou lettre attendue");
+    return type;
 }
+
+
+
+
+
+
 
 OPMUL MultiplicativeOperator(void){
 	OPMUL opmul;
@@ -163,8 +200,10 @@ void DeclarationPart(void){
 		Error("VAR attendu");
 	cout << "\t.data" << endl;
 	cout << "\t.align 8" << endl;
-	cout << "FormatString1:\t.string \"%llu\\n\"" << endl;
-	current=(TOKEN) lexer->yylex();
+        cout << "FormatString1:\t.string \"%llu\\n\"" << endl;
+cout << "FormatString2:\t.string \"%f\\n\"" << endl;
+cout << "FormatString3:\t.string \"%c\\n\"" << endl;       
+ 	current=(TOKEN) lexer->yylex();
 	// VarDeclaration := Ident {"," Ident} ":" Type
 	do {
 		vector<string> vars;
@@ -185,17 +224,28 @@ void DeclarationPart(void){
 			Error("':' attendu");
 		current=(TOKEN) lexer->yylex();
 		TYPE type;
-		if(current==INTEGERTOK)
-			type=UNSIGNED_INT;
-		else if(current==BOOLEANTOK)
-			type=BOOLEAN;
-		else
-			Error("Type attendu (INTEGER ou BOOLEAN)");
-		for(string v : vars){
-			cout << v << ":\t.quad 0" << endl;
-			VariableType[v]=type;
-		}
-		current=(TOKEN) lexer->yylex();
+                if(current==INTEGERTOK)
+    type=UNSIGNED_INT;
+else if(current==BOOLEANTOK)
+    type=BOOLEAN;
+else if(current==DOUBLETOK)
+    type=DOUBLE;
+else if(current==CHARTOK)
+    type=CHAR;
+else
+    Error("Type attendu (INTEGER, BOOLEAN, DOUBLE ou CHAR)");
+for(string v : vars){
+    if(type==DOUBLE)
+        cout << v << ":\t.double 0.0" << endl;
+    else if(type==CHAR)
+        cout << v << ":\t.byte 0" << endl;
+    else
+        cout << v << ":\t.quad 0" << endl;
+    VariableType[v]=type;
+}		
+
+
+            current=(TOKEN) lexer->yylex();
 	} while(current==SEMICOLON && (current=(TOKEN)lexer->yylex(), true));
 	if(current!=DOT)
 		Error("'.' attendu");
@@ -279,8 +329,16 @@ void AssignementStatement(void){
           if(VariableType.find(variable)!=VariableType.end())
              vartype=VariableType[variable];
           if(type!=vartype)
-             Error("Type incompatible dans l'affectation : types différents");
-             cout << "\tpop "<<variable<<endl;
+    Error("Type incompatible dans l'affectation : types différents");
+if(type==DOUBLE){
+    cout << "\tpop %rax" << endl;
+    cout << "\tmovq %rax, " << variable << endl;
+} else if(type==CHAR){
+    cout << "\tpop %rax" << endl;
+    cout << "\tmovb %al, " << variable << endl;
+} else {
+    cout << "\tpop " << variable << endl;
+}
 }
 
 void IfStatement(void);
@@ -292,14 +350,36 @@ void DisplayStatement(void){
     TYPE type;
     current=(TOKEN) lexer->yylex();
     type=Expression();
-    if(type!=UNSIGNED_INT)
-        Error("DISPLAY attend un entier non signé");
-    cout << "\tpop %rdx" << endl;
-    cout << "\tmovq $FormatString1, %rsi" << endl;
-    cout << "\tmovl $1, %edi" << endl;
-    cout << "\tmovl $0, %eax" << endl;
-    cout << "\tcall __printf_chk@PLT" << endl;
+    if(type==UNSIGNED_INT){
+        cout << "\tpop %rdx" << endl;
+        cout << "\tmovq $FormatString1, %rsi" << endl;
+        cout << "\tmovl $1, %edi" << endl;
+        cout << "\tmovl $0, %eax" << endl;
+        cout << "\tcall __printf_chk@PLT" << endl;
+        cout << "\tcall printf@PLT" << endl;
+} else if(type==DOUBLE){
+    cout << "\tpop %rax" << endl;
+    cout << "\tmovq %rax, -8(%rsp)" << endl;
+    cout << "\tmovsd -8(%rsp), %xmm0" << endl;
+    cout << "\tmovq $FormatString2, %rdi" << endl;
+    cout << "\tmovl $1, %eax" << endl;
+    cout << "\tsubq $8, %rsp" << endl;
+    cout << "\tcall printf@PLT" << endl;
+    cout << "\taddq $8, %rsp" << endl;
 }
+ else if(type==CHAR){
+        cout << "\tpop %rax" << endl;
+        cout << "\tmovzbq %al, %rdx" << endl;
+        cout << "\tmovq $FormatString3, %rsi" << endl;
+        cout << "\tmovl $1, %edi" << endl;
+        cout << "\tmovl $0, %eax" << endl;
+        cout << "\tcall __printf_chk@PLT" << endl;
+    } else {
+        Error("DISPLAY attend un INTEGER, DOUBLE ou CHAR");
+    }
+}
+
+
 
 void Statement(void){
 	if(current==IFTOK)

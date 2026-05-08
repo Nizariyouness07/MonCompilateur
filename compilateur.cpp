@@ -393,11 +393,13 @@ if(type==DOUBLE){
     cout << "\tpop " << variable << endl;
 }
 }
-
 void IfStatement(void);
 void WhileStatement(void);
 void ForStatement(void);
 void BlockStatement(void);
+void CaseStatement(void);
+
+
 
 void DisplayStatement(void){
     TYPE type;
@@ -409,7 +411,7 @@ void DisplayStatement(void){
         cout << "\tmovl $1, %edi" << endl;
         cout << "\tmovl $0, %eax" << endl;
         cout << "\tcall __printf_chk@PLT" << endl;
-        cout << "\tcall printf@PLT" << endl;
+        
 } else if(type==DOUBLE){
     cout << "\tpop %rax" << endl;
     cout << "\tmovq %rax, -8(%rsp)" << endl;
@@ -431,6 +433,58 @@ void DisplayStatement(void){
         Error("DISPLAY attend un INTEGER, DOUBLE ou CHAR");
     }
 }
+void Statement(void);
+
+void CaseStatement(void){
+	unsigned long tag=++TagNumber;
+	unsigned long endtag=tag;
+	current=(TOKEN) lexer->yylex();
+	TYPE type=Expression();
+	if(current!=OFTOK)
+		Error("OF attendu");
+	current=(TOKEN) lexer->yylex();
+	cout << "\tpop %rax" << endl;
+	while(current!=ENDTOK && current!=ELSETOK && current!=FEOF){
+		unsigned long casetag=++TagNumber;
+		do {
+			if(current==NUMBER){
+				cout << "\tcmpq $" << atoi(lexer->YYText()) << ", %rax" << endl;
+				current=(TOKEN) lexer->yylex();
+			} else if(current==CHARCONST){
+				char c=lexer->YYText()[1];
+				cout << "\tcmpq $" << (int)c << ", %rax" << endl;
+				current=(TOKEN) lexer->yylex();
+			} else {
+				Error("Constante attendue dans CASE");
+			}
+			cout << "\tje CaseMatch" << casetag << endl;
+			if(current==COMMA)
+				current=(TOKEN) lexer->yylex();
+			else
+				break;
+		} while(true);
+		cout << "\tjmp CaseNext" << casetag << endl;
+		cout << "CaseMatch" << casetag << ":" << endl;
+		if(current!=COLON)
+			Error("':' attendu après les labels du CASE");
+		current=(TOKEN) lexer->yylex();
+		Statement();
+		cout << "\tjmp CaseEnd" << endtag << endl;
+		cout << "CaseNext" << casetag << ":" << endl;
+		if(current==SEMICOLON)
+			current=(TOKEN) lexer->yylex();
+	}
+	if(current==ELSETOK){
+		current=(TOKEN) lexer->yylex();
+		Statement();
+	}
+	if(current!=ENDTOK)
+		Error("END attendu");
+	current=(TOKEN) lexer->yylex();
+	cout << "CaseEnd" << endtag << ":" << endl;
+}
+
+
 
 
 
@@ -445,9 +499,16 @@ void Statement(void){
 		BlockStatement();
 	else if(current==DISPLAYTOK)
 		DisplayStatement();
+	else if(current==CASETOK)
+		CaseStatement();
 	else
 		AssignementStatement();
 }
+
+
+
+
+
 
 void IfStatement(void){
 	unsigned long tag=++TagNumber;

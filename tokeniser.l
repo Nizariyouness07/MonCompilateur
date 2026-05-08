@@ -40,6 +40,8 @@ unknown [^\"A-Za-z0-9 \n\r\t\(\)\<\>\=\!\%\&\|\}\-\;\.]+
 "BEGIN"		return BEGINTOK;
 "END"		return ENDTOK;
 "DISPLAY"	return DISPLAYTOK;
+"CASE"		return CASETOK;
+"OF"		return OFTOK;
 {id}		return ID;
 {stringconst}	return STRINGCONST;
 "["		return RBRACKET;

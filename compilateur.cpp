@@ -101,7 +101,67 @@ TYPE Factor(void){
         Error("'(' ou chiffre ou lettre attendue");
     return type;
 }
+OPMUL MultiplicativeOperator(void);
 
+TYPE Term(void){
+	OPMUL mulop;
+	TYPE type, type2;
+	type=Factor();
+	while(current==MULOP){
+		mulop=MultiplicativeOperator();
+		type2=Factor();
+		if(type!=type2)
+			Error("Types incompatibles dans Term");
+		if(type==DOUBLE){
+			cout << "\tmovq (%rsp), %rax" << endl;
+			cout << "\taddq $8, %rsp" << endl;
+			cout << "\tmovq %rax, -8(%rsp)" << endl;
+			cout << "\tmovsd -8(%rsp), %xmm1" << endl;
+			cout << "\tmovq (%rsp), %rax" << endl;
+			cout << "\taddq $8, %rsp" << endl;
+			cout << "\tmovq %rax, -8(%rsp)" << endl;
+			cout << "\tmovsd -8(%rsp), %xmm0" << endl;
+			switch(mulop){
+				case MUL:
+					cout << "\tmulsd %xmm1, %xmm0" << endl;
+					break;
+				case DIV:
+					cout << "\tdivsd %xmm1, %xmm0" << endl;
+					break;
+				default:
+					Error("opérateur multiplicatif inconnu pour DOUBLE");
+			}
+			cout << "\tsubq $8, %rsp" << endl;
+			cout << "\tmovsd %xmm0, (%rsp)" << endl;
+		} else {
+			cout << "\tpop %rbx"<<endl;
+			cout << "\tpop %rax"<<endl;
+			switch(mulop){
+				case AND:
+					cout << "\tmulq\t%rbx"<<endl;
+					cout << "\tpush %rax\t# AND"<<endl;
+					break;
+				case MUL:
+					cout << "\tmulq\t%rbx"<<endl;
+					cout << "\tpush %rax\t# MUL"<<endl;
+					break;
+				case DIV:
+					cout << "\tmovq $0, %rdx"<<endl;
+					cout << "\tdiv %rbx"<<endl;
+					cout << "\tpush %rax\t# DIV"<<endl;
+					break;
+				case MOD:
+					cout << "\tmovq $0, %rdx"<<endl;
+					cout << "\tdiv %rbx"<<endl;
+					cout << "\tpush %rdx\t# MOD"<<endl;
+					break;
+				default:
+					Error("opérateur multiplicatif attendu");
+			}
+		}
+	}
+	return type;
+}
 
 
 
@@ -119,42 +179,9 @@ OPMUL MultiplicativeOperator(void){
 	return opmul;
 }
 
-TYPE Term(void){
-	OPMUL mulop;
-	TYPE type, type2;
-	type=Factor();
-	while(current==MULOP){
-		mulop=MultiplicativeOperator();
-		type2=Factor();
-		if(type!=type2)
-			Error("Types incompatibles dans Term");
-		cout << "\tpop %rbx"<<endl;
-		cout << "\tpop %rax"<<endl;
-		switch(mulop){
-			case AND:
-				cout << "\tmulq\t%rbx"<<endl;
-				cout << "\tpush %rax\t# AND"<<endl;
-				break;
-			case MUL:
-				cout << "\tmulq\t%rbx"<<endl;
-				cout << "\tpush %rax\t# MUL"<<endl;
-				break;
-			case DIV:
-				cout << "\tmovq $0, %rdx"<<endl;
-				cout << "\tdiv %rbx"<<endl;
-				cout << "\tpush %rax\t# DIV"<<endl;
-				break;
-			case MOD:
-				cout << "\tmovq $0, %rdx"<<endl;
-				cout << "\tdiv %rbx"<<endl;
-				cout << "\tpush %rdx\t# MOD"<<endl;
-				break;
-			default:
-				Error("opérateur multiplicatif attendu");
-		}
-	}
-	return type;
-}
+
+
+
 
 OPADD AdditiveOperator(void){
 	OPADD opadd;

@@ -167,33 +167,59 @@ OPADD AdditiveOperator(void){
 }
 
 TYPE SimpleExpression(void){
-	OPADD adop;
-	TYPE type, type2;
-	type=Term();
-	while(current==ADDOP){
-		adop=AdditiveOperator();
-		type2=Term();
-		if(type!=type2)
-			Error("Types incompatibles dans SimpleExpression");
-		cout << "\tpop %rbx"<<endl;
-		cout << "\tpop %rax"<<endl;
-		switch(adop){
-			case OR:
-				cout << "\taddq\t%rbx, %rax\t# OR"<<endl;
-				break;
-			case ADD:
-				cout << "\taddq\t%rbx, %rax\t# ADD"<<endl;
-				break;
-			case SUB:
-				cout << "\tsubq\t%rbx, %rax\t# SUB"<<endl;
-				break;
-			default:
-				Error("opérateur additif inconnu");
-		}
-		cout << "\tpush %rax"<<endl;
-	}
-	return type;
+    OPADD adop;
+    TYPE type, type2;
+    type=Term();
+    while(current==ADDOP){
+        adop=AdditiveOperator();
+        type2=Term();
+        if(type!=type2)
+            Error("Types incompatibles dans SimpleExpression");
+        if(type==DOUBLE){
+            cout << "\tmovq (%rsp), %rax" << endl;
+            cout << "\taddq $8, %rsp" << endl;
+            cout << "\tmovq %rax, -8(%rsp)" << endl;
+            cout << "\tmovsd -8(%rsp), %xmm1" << endl;
+            cout << "\tmovq (%rsp), %rax" << endl;
+            cout << "\taddq $8, %rsp" << endl;
+            cout << "\tmovq %rax, -8(%rsp)" << endl;
+            cout << "\tmovsd -8(%rsp), %xmm0" << endl;
+            switch(adop){
+                case ADD:
+                    cout << "\taddsd %xmm1, %xmm0" << endl;
+                    break;
+                case SUB:
+                    cout << "\tsubsd %xmm1, %xmm0" << endl;
+                    break;
+                default:
+                    Error("opérateur additif inconnu pour DOUBLE");
+            }
+            cout << "\tsubq $8, %rsp" << endl;
+            cout << "\tmovsd %xmm0, (%rsp)" << endl;
+        } else {
+            cout << "\tpop %rbx" << endl;
+            cout << "\tpop %rax" << endl;
+            switch(adop){
+                case OR:
+                    cout << "\taddq\t%rbx, %rax\t# OR" << endl;
+                    break;
+                case ADD:
+                    cout << "\taddq\t%rbx, %rax\t# ADD" << endl;
+                    break;
+                case SUB:
+                    cout << "\tsubq\t%rbx, %rax\t# SUB" << endl;
+                    break;
+                default:
+                    Error("opérateur additif inconnu");
+            }
+            cout << "\tpush %rax" << endl;
+        }
+    }
+    return type;
 }
+
+
+
 
 void DeclarationPart(void){
 	if(current!=VARTOK)

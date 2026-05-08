@@ -273,11 +273,14 @@ void AssignementStatement(void){
 	if(current!=ASSIGN)
 		Error("caractères ':=' attendus");
 	current=(TOKEN) lexer->yylex();
-	TYPE type=Expression();
-	// Pour l'instant toutes les variables sont UNSIGNED_INT
-	if(type!=UNSIGNED_INT && type!=BOOLEAN)
-		Error("Type incompatible dans l'affectation");
-	cout << "\tpop "<<variable<<endl;
+
+        TYPE type=Expression();
+        TYPE vartype=UNSIGNED_INT;
+          if(VariableType.find(variable)!=VariableType.end())
+             vartype=VariableType[variable];
+          if(type!=vartype)
+             Error("Type incompatible dans l'affectation : types différents");
+             cout << "\tpop "<<variable<<endl;
 }
 
 void IfStatement(void);

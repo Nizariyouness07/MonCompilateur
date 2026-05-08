@@ -353,33 +353,40 @@ void WhileStatement(void){
 	cout << "\tjmp While" << tag << endl;
 	cout << "EndWhile" << tag << ":" << endl;
 }
-
 void ForStatement(void){
 	unsigned long tag=++TagNumber;
 	current=(TOKEN) lexer->yylex();
+	// Récupère le nom de la variable de boucle
+	if(current!=ID)
+		Error("Identificateur attendu");
+	string loopvar = lexer->YYText();
 	AssignementStatement();
 	cout << "For" << tag << ":" << endl;
 	if(current!=TOTOK)
 		Error("TO attendu");
 	current=(TOKEN) lexer->yylex();
-	// get loop variable name
-	string var = DeclaredVariables.empty() ? "" : *DeclaredVariables.begin();
-	// push current value of loop var
-	// We need to compare loop var with limit
 	Expression();
+	// limit est sur la pile, on la sauvegarde dans %rbx
 	cout << "\tpop %rbx" << endl;
+	// push current value of loop var
+	cout << "\tpush " << loopvar << endl;
 	cout << "\tpop %rax" << endl;
 	cout << "\tcmpq %rbx, %rax" << endl;
 	cout << "\tjg EndFor" << tag << endl;
-	cout << "\tpush %rax" << endl;
 	if(current!=DOTOK)
 		Error("DO attendu");
 	current=(TOKEN) lexer->yylex();
 	Statement();
+	// Incrémente la variable de boucle
+	cout << "\tpush " << loopvar << endl;
+	cout << "\tpush $1" << endl;
+	cout << "\tpop %rbx" << endl;
+	cout << "\tpop %rax" << endl;
+	cout << "\taddq %rbx, %rax" << endl;
+	cout << "\tpop " << loopvar << endl;
 	cout << "\tjmp For" << tag << endl;
 	cout << "EndFor" << tag << ":" << endl;
 }
-
 void BlockStatement(void){
 	current=(TOKEN) lexer->yylex();
 	Statement();

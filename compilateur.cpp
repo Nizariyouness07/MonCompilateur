@@ -155,6 +155,7 @@ void DeclarationPart(void){
 		Error("caractère '[' attendu");
 	cout << "\t.data"<<endl;
 	cout << "\t.align 8"<<endl;
+        cout << "FormatString1:\t.string \"%llu\\n\""<<endl;
 	current=(TOKEN) lexer->yylex();
 	if(current!=ID)
 		Error("Un identificateur était attendu");
@@ -255,6 +256,19 @@ void WhileStatement(void);
 void ForStatement(void);
 void BlockStatement(void);
 
+void DisplayStatement(void){
+    TYPE type;
+    current=(TOKEN) lexer->yylex();
+    type=Expression();
+    if(type!=UNSIGNED_INT)
+        Error("DISPLAY attend un entier non signé");
+    cout << "\tpop %rdx" << endl;
+    cout << "\tmovq $FormatString1, %rsi" << endl;
+    cout << "\tmovl $1, %edi" << endl;
+    cout << "\tmovl $0, %eax" << endl;
+    cout << "\tcall __printf_chk@PLT" << endl;
+}
+
 void Statement(void){
 	if(current==IFTOK)
 		IfStatement();
@@ -264,6 +278,8 @@ void Statement(void){
 		ForStatement();
 	else if(current==BEGINTOK)
 		BlockStatement();
+	else if(current==DISPLAYTOK)
+		DisplayStatement();
 	else
 		AssignementStatement();
 }

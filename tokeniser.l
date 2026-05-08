@@ -30,6 +30,7 @@ unknown [^\"A-Za-z0-9 \n\r\t\(\)\<\>\=\!\%\&\|\}\-\;\.]+
 "TO"		return TOTOK;
 "BEGIN"		return BEGINTOK;
 "END"		return ENDTOK;
+"DISPLAY"	return DISPLAYTOK;
 {id}		return ID;
 {stringconst}	return STRINGCONST;
 "["		return RBRACKET;

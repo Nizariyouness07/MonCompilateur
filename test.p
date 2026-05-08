@@ -1,1 +1,5 @@
-(6+(7+(8+9)-(6+5)))
+VAR
+z,b : BOOLEAN;
+a : INTEGER.
+a:=5;
+DISPLAY a.

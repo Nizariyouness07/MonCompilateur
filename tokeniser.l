@@ -21,6 +21,9 @@ unknown [^\"A-Za-z0-9 \n\r\t\(\)\<\>\=\!\%\&\|\}\-\;\.]+
 {mulop}		return MULOP;
 {relop}		return RELOP;
 {number}	return NUMBER;
+"VAR"		return VARTOK;
+"INTEGER"	return INTEGERTOK;
+"BOOLEAN"	return BOOLEANTOK;
 "IF"		return IFTOK;
 "THEN"		return THENTOK;
 "ELSE"		return ELSETOK;
@@ -39,6 +42,7 @@ unknown [^\"A-Za-z0-9 \n\r\t\(\)\<\>\=\!\%\&\|\}\-\;\.]+
 ";"		return SEMICOLON;
 "."		return DOT;
 ":="		return ASSIGN;
+":"		return COLON;
 "("		return RPARENT;
 ")"		return LPARENT;
 "!"		return NOT;

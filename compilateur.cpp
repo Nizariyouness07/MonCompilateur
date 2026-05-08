@@ -5,6 +5,9 @@
 #include <FlexLexer.h>
 #include "tokeniser.h"
 #include <cstring>
+#include <map>
+#include <vector>
+
 
 using namespace std;
 
@@ -18,6 +21,7 @@ TOKEN current;
 FlexLexer* lexer = new yyFlexLexer;
 
 set<string> DeclaredVariables;
+map<string, TYPE> VariableType;
 unsigned long TagNumber=0;
 
 bool IsDeclared(const char *id){
@@ -31,10 +35,14 @@ void Error(string s){
 }
 
 TYPE Identifier(void){
-	cout << "\tpush "<<lexer->YYText()<<endl;
+	string name = lexer->YYText();
+	cout << "\tpush " << name << endl;
 	current=(TOKEN) lexer->yylex();
+	if(VariableType.find(name)!=VariableType.end())
+		return VariableType[name];
 	return UNSIGNED_INT;
 }
+
 
 TYPE Number(void){
 	cout <<"\tpush $"<<atoi(lexer->YYText())<<endl;
@@ -151,29 +159,50 @@ TYPE SimpleExpression(void){
 }
 
 void DeclarationPart(void){
-	if(current!=RBRACKET)
-		Error("caractère '[' attendu");
-	cout << "\t.data"<<endl;
-	cout << "\t.align 8"<<endl;
-        cout << "FormatString1:\t.string \"%llu\\n\""<<endl;
+	if(current!=VARTOK)
+		Error("VAR attendu");
+	cout << "\t.data" << endl;
+	cout << "\t.align 8" << endl;
+	cout << "FormatString1:\t.string \"%llu\\n\"" << endl;
 	current=(TOKEN) lexer->yylex();
-	if(current!=ID)
-		Error("Un identificateur était attendu");
-	cout << lexer->YYText() << ":\t.quad 0"<<endl;
-	DeclaredVariables.insert(lexer->YYText());
-	current=(TOKEN) lexer->yylex();
-	while(current==COMMA){
-		current=(TOKEN) lexer->yylex();
+	// VarDeclaration := Ident {"," Ident} ":" Type
+	do {
+		vector<string> vars;
 		if(current!=ID)
-			Error("Un identificateur était attendu");
-		cout << lexer->YYText() << ":\t.quad 0"<<endl;
+			Error("Identificateur attendu");
+		vars.push_back(lexer->YYText());
 		DeclaredVariables.insert(lexer->YYText());
 		current=(TOKEN) lexer->yylex();
-	}
-	if(current!=LBRACKET)
-		Error("caractère ']' attendu");
+		while(current==COMMA){
+			current=(TOKEN) lexer->yylex();
+			if(current!=ID)
+				Error("Identificateur attendu");
+			vars.push_back(lexer->YYText());
+			DeclaredVariables.insert(lexer->YYText());
+			current=(TOKEN) lexer->yylex();
+		}
+		if(current!=COLON)
+			Error("':' attendu");
+		current=(TOKEN) lexer->yylex();
+		TYPE type;
+		if(current==INTEGERTOK)
+			type=UNSIGNED_INT;
+		else if(current==BOOLEANTOK)
+			type=BOOLEAN;
+		else
+			Error("Type attendu (INTEGER ou BOOLEAN)");
+		for(string v : vars){
+			cout << v << ":\t.quad 0" << endl;
+			VariableType[v]=type;
+		}
+		current=(TOKEN) lexer->yylex();
+	} while(current==SEMICOLON && (current=(TOKEN)lexer->yylex(), true));
+	if(current!=DOT)
+		Error("'.' attendu");
 	current=(TOKEN) lexer->yylex();
 }
+
+
 
 OPREL RelationalOperator(void){
 	OPREL oprel;
@@ -385,7 +414,7 @@ void StatementPart(void){
 }
 
 void Program(void){
-	if(current==RBRACKET)
+        if(current==VARTOK)
 		DeclarationPart();
 	StatementPart();
 }
